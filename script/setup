@@ -43,3 +43,20 @@ logger:
     homeassistant.components.cloud: debug
 " >> config/configuration.yaml
 fi
+
+# Configure HTTP proxy settings for Gitpod environments
+if [ -n "$GITPOD_WORKSPACE_ID" ] && ! grep -R "use_x_forwarded_for" config/configuration.yaml >> /dev/null; then
+echo "
+# Gitpod development environment configuration
+homeassistant:
+  external_url: https://8123-${GITPOD_WORKSPACE_ID}.${GITPOD_WORKSPACE_CLUSTER_HOST}
+
+# HTTP configuration for Gitpod development environment
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 0.0.0.0/0
+    - ::/0
+" >> config/configuration.yaml
+echo "✅ Configured Home Assistant for Gitpod environment"
+fi

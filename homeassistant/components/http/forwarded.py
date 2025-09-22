@@ -120,8 +120,27 @@ def async_setup_forwarded(
 
         # Process X-Forwarded-For from the right side (by reversing the list)
         forwarded_for_split = list(reversed(forwarded_for_headers[0].split(",")))
+
+        def _clean_ip_address(addr: str) -> str:
+            """Clean IP address by removing port if present (Gitpod compatibility).
+
+            Some proxy infrastructures (like Gitpod) incorrectly include port numbers
+            in X-Forwarded-For headers: "85.22.17.135:38790" instead of "85.22.17.135".
+            This violates RFC 7239 but we handle it for compatibility.
+            """
+            addr = addr.strip()
+            # Handle IPv6 addresses with ports: [::1]:8080 -> ::1
+            if addr.startswith("[") and "]:" in addr:
+                return addr[1 : addr.index("]:")]
+            # Handle IPv4 addresses with ports: 192.168.1.1:8080 -> 192.168.1.1
+            if ":" in addr and not addr.count(":") > 1:  # Not IPv6
+                return addr.split(":")[0]
+            return addr
+
         try:
-            forwarded_for = [ip_address(addr.strip()) for addr in forwarded_for_split]
+            forwarded_for = [
+                ip_address(_clean_ip_address(addr)) for addr in forwarded_for_split
+            ]
         except ValueError as err:
             _LOGGER.error(
                 "Invalid IP address in X-Forwarded-For: %s", forwarded_for_headers[0]

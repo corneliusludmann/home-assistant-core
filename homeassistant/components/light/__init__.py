@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Self, cast, final, override
 from propcache.api import cached_property
 import voluptuous as vol
 
+from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     SERVICE_TOGGLE,
@@ -554,7 +555,53 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         async_handle_toggle_service,
     )
 
+    websocket_api.async_register_command(hass, ws_favorite_brightness)
+
     return True
+
+
+VALID_FAVORITE_BRIGHTNESS = vol.All(vol.Coerce(int), vol.Range(min=0, max=100))
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "light/favorite_brightness",
+        vol.Required("entity_id"): cv.entity_id,
+        vol.Required("favorite_brightness"): vol.Any(None, [VALID_FAVORITE_BRIGHTNESS]),
+    }
+)
+@callback
+def ws_favorite_brightness(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Update favorite brightness values for a light entity."""
+    registry = er.async_get(hass)
+
+    if not (entry := registry.async_get(msg["entity_id"])):
+        connection.send_error(msg["id"], "not_found", "Entity not found")
+        return
+
+    if entry.domain != DOMAIN:
+        connection.send_error(msg["id"], "invalid_entity", "Not a light entity")
+        return
+
+    favorite_brightness = msg["favorite_brightness"]
+
+    # Build the new light options, preserving existing keys
+    light_options: dict[str, Any] = dict(entry.options.get(DOMAIN) or {})
+    if favorite_brightness is None:
+        light_options.pop("favorite_brightness", None)
+    else:
+        light_options["favorite_brightness"] = favorite_brightness
+
+    registry.async_update_entity_options(
+        msg["entity_id"], DOMAIN, light_options or None
+    )
+
+    connection.send_result(msg["id"])
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

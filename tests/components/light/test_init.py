@@ -19,6 +19,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
+from homeassistant.helpers import entity_registry as er
 from homeassistant.setup import async_setup_component
 from homeassistant.util import color as color_util
 
@@ -30,6 +31,7 @@ from tests.common import (
     async_mock_service,
     setup_test_component_platform,
 )
+from tests.typing import WebSocketGenerator
 
 orig_Profiles = light.Profiles
 
@@ -2589,3 +2591,178 @@ def test_missing_kelvin_property_warnings(
 
     assert state.attributes[light.ATTR_MIN_COLOR_TEMP_KELVIN] == expected_values[0]
     assert state.attributes[light.ATTR_MAX_COLOR_TEMP_KELVIN] == expected_values[1]
+
+
+async def test_ws_favorite_brightness(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test setting favorite brightness via websocket."""
+    assert await async_setup_component(hass, "light", {})
+
+    entry = entity_registry.async_get_or_create("light", "test", "unique_1")
+
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "light/favorite_brightness",
+            "entity_id": entry.entity_id,
+            "favorite_brightness": [0, 25, 50, 75, 100],
+        }
+    )
+    msg = await client.receive_json()
+    assert msg["success"]
+
+    entry = entity_registry.async_get(entry.entity_id)
+    assert entry.options == {"light": {"favorite_brightness": [0, 25, 50, 75, 100]}}
+
+
+async def test_ws_favorite_brightness_remove(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test removing favorite brightness via websocket."""
+    assert await async_setup_component(hass, "light", {})
+
+    entry = entity_registry.async_get_or_create("light", "test", "unique_1")
+    entity_registry.async_update_entity_options(
+        entry.entity_id, "light", {"favorite_brightness": [0, 50, 100]}
+    )
+
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "light/favorite_brightness",
+            "entity_id": entry.entity_id,
+            "favorite_brightness": None,
+        }
+    )
+    msg = await client.receive_json()
+    assert msg["success"]
+
+    entry = entity_registry.async_get(entry.entity_id)
+    assert entry.options == {}
+
+
+async def test_ws_favorite_brightness_preserves_other_options(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test that setting favorite brightness preserves other light options."""
+    assert await async_setup_component(hass, "light", {})
+
+    entry = entity_registry.async_get_or_create("light", "test", "unique_1")
+    entity_registry.async_update_entity_options(
+        entry.entity_id, "light", {"favorite_colors": [{"hs_color": [30, 80]}]}
+    )
+
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "light/favorite_brightness",
+            "entity_id": entry.entity_id,
+            "favorite_brightness": [0, 50, 100],
+        }
+    )
+    msg = await client.receive_json()
+    assert msg["success"]
+
+    entry = entity_registry.async_get(entry.entity_id)
+    assert entry.options == {
+        "light": {
+            "favorite_colors": [{"hs_color": [30, 80]}],
+            "favorite_brightness": [0, 50, 100],
+        }
+    }
+
+
+async def test_ws_favorite_brightness_invalid_values(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test that invalid brightness values are rejected."""
+    assert await async_setup_component(hass, "light", {})
+
+    entry = entity_registry.async_get_or_create("light", "test", "unique_1")
+
+    client = await hass_ws_client(hass)
+
+    # Value above 100
+    await client.send_json_auto_id(
+        {
+            "type": "light/favorite_brightness",
+            "entity_id": entry.entity_id,
+            "favorite_brightness": [0, 50, 150],
+        }
+    )
+    msg = await client.receive_json()
+    assert not msg["success"]
+
+    # Value below 0
+    await client.send_json_auto_id(
+        {
+            "type": "light/favorite_brightness",
+            "entity_id": entry.entity_id,
+            "favorite_brightness": [-10, 50],
+        }
+    )
+    msg = await client.receive_json()
+    assert not msg["success"]
+
+    # Non-integer values (string)
+    await client.send_json_auto_id(
+        {
+            "type": "light/favorite_brightness",
+            "entity_id": entry.entity_id,
+            "favorite_brightness": ["abc"],
+        }
+    )
+    msg = await client.receive_json()
+    assert not msg["success"]
+
+
+async def test_ws_favorite_brightness_entity_not_found(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+) -> None:
+    """Test error when entity does not exist."""
+    assert await async_setup_component(hass, "light", {})
+
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "light/favorite_brightness",
+            "entity_id": "light.nonexistent",
+            "favorite_brightness": [50],
+        }
+    )
+    msg = await client.receive_json()
+    assert not msg["success"]
+    assert msg["error"]["code"] == "not_found"
+
+
+async def test_ws_favorite_brightness_wrong_domain(
+    hass: HomeAssistant,
+    hass_ws_client: WebSocketGenerator,
+    entity_registry: er.EntityRegistry,
+) -> None:
+    """Test error when entity is not a light."""
+    assert await async_setup_component(hass, "light", {})
+
+    entry = entity_registry.async_get_or_create("switch", "test", "unique_1")
+
+    client = await hass_ws_client(hass)
+    await client.send_json_auto_id(
+        {
+            "type": "light/favorite_brightness",
+            "entity_id": entry.entity_id,
+            "favorite_brightness": [50],
+        }
+    )
+    msg = await client.receive_json()
+    assert not msg["success"]
+    assert msg["error"]["code"] == "invalid_entity"

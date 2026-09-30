@@ -1,0 +1,37 @@
+title: KNX Context Lab
+views:
+  - title: Simulation
+    path: simulation
+    cards:
+      - type: markdown
+        content: |
+          ## KNX → automation → cover
+          Reset the cover to open, turn Lab trigger off, then use **Wall switch**.
+          The cover should be attributed to **KNX switch moves cover**.
+          **Direct cover down** should instead identify KNX sender 1.1.24.
+      - type: entities
+        entities:
+          - switch.lab_trigger
+          - cover.lab_cover
+          - light.lab_light
+          - automation.knx_switch_moves_cover
+      - type: button
+        name: Reset cover to open
+        tap_action:
+          action: perform-action
+          perform_action: rest_command.knx_lab_reset
+      - type: button
+        name: Wall switch
+        tap_action:
+          action: perform-action
+          perform_action: rest_command.knx_lab_trigger
+      - type: button
+        name: Direct cover down
+        tap_action:
+          action: perform-action
+          perform_action: rest_command.knx_lab_cover_down
+      - type: logbook
+        entities:
+          - switch.lab_trigger
+          - cover.lab_cover
+        hours_to_show: 1

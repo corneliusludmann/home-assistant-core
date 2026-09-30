@@ -1,0 +1,1008 @@
+diff --git a/homeassistant/components/knx/climate.py b/homeassistant/components/knx/climate.py
+index a88e9b57c5..6120101096 100644
+--- a/homeassistant/components/knx/climate.py
++++ b/homeassistant/components/knx/climate.py
+@@ -7,6 +7,7 @@ from xknx.devices import (
+     Climate as XknxClimate,
+     ClimateMode as XknxClimateMode,
+     Device as XknxDevice,
++    DeviceUpdate,
+ )
+ from xknx.devices.fan import FanSpeedMode
+ from xknx.dpt.dpt_20 import HVACControllerMode, HVACOperationMode
+@@ -654,7 +655,7 @@ class _KnxClimate(ClimateEntity, _KnxEntityBase):
+         await super().async_will_remove_from_hass()
+ 
+     @override
+-    def after_update_callback(self, device: XknxDevice) -> None:
++    def after_update_callback(self, device: XknxDevice, update: DeviceUpdate) -> None:
+         """Call after device was updated."""
+         if self._device.mode is not None and self._device.mode.supports_controller_mode:
+             hvac_mode = CONTROLLER_MODES.get(
+@@ -662,7 +663,7 @@ class _KnxClimate(ClimateEntity, _KnxEntityBase):
+             )
+             if hvac_mode is not HVACMode.OFF:
+                 self._last_hvac_mode = hvac_mode
+-        super().after_update_callback(device)
++        super().after_update_callback(device, update)
+ 
+ 
+ class KnxYamlClimate(_KnxClimate, KnxYamlEntity):
+diff --git a/homeassistant/components/knx/const.py b/homeassistant/components/knx/const.py
+index 7c5926a014..2eeb53a2cd 100644
+--- a/homeassistant/components/knx/const.py
++++ b/homeassistant/components/knx/const.py
+@@ -78,7 +78,7 @@ KNX_TELEGRAM_LOAD_HOURS_DEFAULT: Final = 24  # 1 day
+ KNX_TELEGRAM_DB_PATH_SQLITE: Final = "knx/telegrams.db"  # relative to STORAGE_DIR
+ 
+ # Event for KNX telegram sender attribution in Activity.
+-EVENT_KNX_TELEGRAM_RECEIVED = "knx_telegram_received"
++EVENT_KNX_STATE_CHANGED = "knx_state_changed"
+ 
+ # dispatcher signal for KNX interface device triggers
+ SIGNAL_KNX_TELEGRAM: SignalType[Telegram, TelegramDict] = SignalType("knx_telegram")
+diff --git a/homeassistant/components/knx/cover.py b/homeassistant/components/knx/cover.py
+index 4cdc94285d..74c5566566 100644
+--- a/homeassistant/components/knx/cover.py
++++ b/homeassistant/components/knx/cover.py
+@@ -4,6 +4,7 @@ from typing import Any, override
+ 
+ from xknx import XKNX
+ from xknx.devices import Cover as XknxCover
++from xknx.telegram import telegram_context
+ 
+ from homeassistant import config_entries
+ from homeassistant.components.cover import (
+@@ -183,23 +184,27 @@ class _KnxCover(CoverEntity, RestoreEntity):
+     @override
+     async def async_close_cover(self, **kwargs: Any) -> None:
+         """Close the cover."""
+-        await self._device.set_down()
++        with telegram_context(self._context):
++            await self._device.set_down()
+ 
+     @override
+     async def async_open_cover(self, **kwargs: Any) -> None:
+         """Open the cover."""
+-        await self._device.set_up()
++        with telegram_context(self._context):
++            await self._device.set_up()
+ 
+     @override
+     async def async_set_cover_position(self, **kwargs: Any) -> None:
+         """Move the cover to a specific position."""
+-        knx_position = 100 - kwargs[ATTR_POSITION]
+-        await self._device.set_position(knx_position)
++        with telegram_context(self._context):
++            knx_position = 100 - kwargs[ATTR_POSITION]
++            await self._device.set_position(knx_position)
+ 
+     @override
+     async def async_stop_cover(self, **kwargs: Any) -> None:
+         """Stop the cover."""
+-        await self._device.stop()
++        with telegram_context(self._context):
++            await self._device.stop()
+ 
+     @property
+     @override
+@@ -212,29 +217,33 @@ class _KnxCover(CoverEntity, RestoreEntity):
+     @override
+     async def async_set_cover_tilt_position(self, **kwargs: Any) -> None:
+         """Move the cover tilt to a specific position."""
+-        knx_tilt_position = 100 - kwargs[ATTR_TILT_POSITION]
+-        await self._device.set_angle(knx_tilt_position)
++        with telegram_context(self._context):
++            knx_tilt_position = 100 - kwargs[ATTR_TILT_POSITION]
++            await self._device.set_angle(knx_tilt_position)
+ 
+     @override
+     async def async_open_cover_tilt(self, **kwargs: Any) -> None:
+         """Open the cover tilt."""
+-        if self._device.angle.writable:
+-            await self._device.set_angle(0)
+-        else:
+-            await self._device.set_short_up()
++        with telegram_context(self._context):
++            if self._device.angle.writable:
++                await self._device.set_angle(0)
++            else:
++                await self._device.set_short_up()
+ 
+     @override
+     async def async_close_cover_tilt(self, **kwargs: Any) -> None:
+         """Close the cover tilt."""
+-        if self._device.angle.writable:
+-            await self._device.set_angle(100)
+-        else:
+-            await self._device.set_short_down()
++        with telegram_context(self._context):
++            if self._device.angle.writable:
++                await self._device.set_angle(100)
++            else:
++                await self._device.set_short_down()
+ 
+     @override
+     async def async_stop_cover_tilt(self, **kwargs: Any) -> None:
+         """Stop the cover tilt."""
+-        await self._device.stop()
++        with telegram_context(self._context):
++            await self._device.stop()
+ 
+ 
+ class KnxYamlCover(_KnxCover, KnxYamlEntity):
+diff --git a/homeassistant/components/knx/entity.py b/homeassistant/components/knx/entity.py
+index 86d3df4d9a..c61af8edc1 100644
+--- a/homeassistant/components/knx/entity.py
++++ b/homeassistant/components/knx/entity.py
+@@ -5,7 +5,7 @@ from dataclasses import dataclass
+ import logging
+ from typing import TYPE_CHECKING, Any, override
+ 
+-from xknx.devices import Device as XknxDevice
++from xknx.devices import Device as XknxDevice, DeviceUpdate
+ from xknx.telegram.address import DeviceGroupAddress, GroupAddress
+ 
+ from homeassistant.const import (
+@@ -15,8 +15,11 @@ from homeassistant.const import (
+     CONF_ID,
+     CONF_NAME,
+     CONF_UNIQUE_ID,
++    STATE_UNAVAILABLE,
++    STATE_UNKNOWN,
++    Platform,
+ )
+-from homeassistant.core import HomeAssistant, callback
++from homeassistant.core import Context, HomeAssistant, callback
+ from homeassistant.helpers import entity_registry as er
+ from homeassistant.helpers.device_registry import DeviceInfo
+ from homeassistant.helpers.entity import Entity
+@@ -29,6 +32,7 @@ from homeassistant.helpers.entity_registry import RegistryEntry
+ from .const import CONF_DEFAULT_ENTITY_ID, DOMAIN
+ from .storage.config_store import PlatformControllerBase
+ from .storage.entity_store_schema import BaseEntityConfig, KnxEntityData
++from .telegrams import KnxTelegramContext
+ 
+ if TYPE_CHECKING:
+     from .knx_module import KNXModule
+@@ -148,8 +152,25 @@ class _KnxEntityBase(Entity):
+         """Request a state update from KNX bus."""
+         await self._device.sync()
+ 
+-    def after_update_callback(self, device: XknxDevice) -> None:
+-        """Call after device was updated."""
++    def after_update_callback(self, device: XknxDevice, update: DeviceUpdate) -> None:
++        """Apply the explicit cause and record relevant actor state transitions."""
++        if self.platform_data.domain in (
++            Platform.LIGHT,
++            Platform.SWITCH,
++            Platform.COVER,
++        ):
++            context = (
++                update.context if isinstance(update.context, Context) else Context()
++            )
++            self.async_set_context(context)
++            if (
++                isinstance(context, KnxTelegramContext)
++                and (old_state := self.hass.states.get(self.entity_id)) is not None
++                and old_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
++                and self.state is not None
++                and old_state.state != self.state
++            ):
++                context.async_log(self.hass)
+         self.async_write_ha_state()
+ 
+     @override
+diff --git a/homeassistant/components/knx/light.py b/homeassistant/components/knx/light.py
+index c807042a2a..349df475f9 100644
+--- a/homeassistant/components/knx/light.py
++++ b/homeassistant/components/knx/light.py
+@@ -4,9 +4,8 @@ from typing import Any, cast, override
+ 
+ from propcache.api import cached_property
+ from xknx import XKNX
+-from xknx.devices import Device as XknxDevice
+ from xknx.devices.light import ColorTemperatureType, Light as XknxLight, XYYColor
+-from xknx.telegram import Telegram, TelegramDirection
++from xknx.telegram import telegram_context
+ from xknx.telegram.address import DeviceGroupAddress
+ 
+ from homeassistant import config_entries
+@@ -20,8 +19,8 @@ from homeassistant.components.light import (
+     ColorMode,
+     LightEntity,
+ )
+-from homeassistant.const import CONF_NAME, STATE_OFF, STATE_ON, Platform
+-from homeassistant.core import Context, HomeAssistant
++from homeassistant.const import CONF_NAME, Platform
++from homeassistant.core import HomeAssistant
+ from homeassistant.helpers.entity_platform import (
+     AddConfigEntryEntitiesCallback,
+     async_get_current_platform,
+@@ -331,29 +330,6 @@ class _KnxLight(LightEntity):
+     _attr_min_color_temp_kelvin: int
+     _device: XknxLight
+     _knx_module: KNXModule
+-    _last_switch_telegram: Telegram | None = None
+-
+-    def after_update_callback(self, device: XknxDevice) -> None:
+-        """Attribute on/off changes to the telegram updating the switch value."""
+-        telegram = self._device.switch.telegram
+-        new_telegram = telegram is not self._last_switch_telegram
+-        self._last_switch_telegram = telegram
+-        if (
+-            new_telegram
+-            and telegram is not None
+-            and telegram.direction is TelegramDirection.INCOMING
+-            and (old_state := self.hass.states.get(self.entity_id)) is not None
+-            and old_state.state in (STATE_ON, STATE_OFF)
+-            and old_state.state != (STATE_ON if self.is_on else STATE_OFF)
+-        ):
+-            self.async_set_context(
+-                self._knx_module.telegrams.async_get_context(telegram)
+-            )
+-            self.async_write_ha_state()
+-            # Later color or brightness updates must not inherit this sender.
+-            self.async_set_context(Context())
+-            return
+-        self.async_write_ha_state()
+ 
+     @property
+     @override
+@@ -480,118 +456,120 @@ class _KnxLight(LightEntity):
+     @override
+     async def async_turn_on(self, **kwargs: Any) -> None:
+         """Turn the light on."""
+-        brightness = kwargs.get(ATTR_BRIGHTNESS)
+-        # LightEntity color translation will ensure that only attributes of supported
+-        # color modes are passed to this method - so we can't set unsupported mode here
+-        if color_temp := kwargs.get(ATTR_COLOR_TEMP_KELVIN):
+-            self._attr_color_mode = ColorMode.COLOR_TEMP
+-        if rgb := kwargs.get(ATTR_RGB_COLOR):
+-            self._attr_color_mode = ColorMode.RGB
+-        if rgbw := kwargs.get(ATTR_RGBW_COLOR):
+-            self._attr_color_mode = ColorMode.RGBW
+-        if hs_color := kwargs.get(ATTR_HS_COLOR):
+-            self._attr_color_mode = ColorMode.HS
+-        if xy_color := kwargs.get(ATTR_XY_COLOR):
+-            self._attr_color_mode = ColorMode.XY
+-
+-        if (
+-            not self.is_on
+-            and brightness is None
+-            and color_temp is None
+-            and rgb is None
+-            and rgbw is None
+-            and hs_color is None
+-            and xy_color is None
+-        ):
+-            await self._device.set_on()
+-            return
+-
+-        async def set_color(
+-            rgb: tuple[int, int, int], white: int | None, brightness: int | None
+-        ) -> None:
+-            """Set color of light. Normalize colors for brightness when not writable."""
+-            if self._device.brightness.writable:
+-                # let the KNX light controller handle brightness
+-                await self._device.set_color(rgb, white)
+-                if brightness:
+-                    await self._device.set_brightness(brightness)
++        with telegram_context(self._context):
++            brightness = kwargs.get(ATTR_BRIGHTNESS)
++            # LightEntity color translation will ensure that only attributes of supported
++            # color modes are passed to this method - so we can't set unsupported mode here
++            if color_temp := kwargs.get(ATTR_COLOR_TEMP_KELVIN):
++                self._attr_color_mode = ColorMode.COLOR_TEMP
++            if rgb := kwargs.get(ATTR_RGB_COLOR):
++                self._attr_color_mode = ColorMode.RGB
++            if rgbw := kwargs.get(ATTR_RGBW_COLOR):
++                self._attr_color_mode = ColorMode.RGBW
++            if hs_color := kwargs.get(ATTR_HS_COLOR):
++                self._attr_color_mode = ColorMode.HS
++            if xy_color := kwargs.get(ATTR_XY_COLOR):
++                self._attr_color_mode = ColorMode.XY
++
++            if (
++                not self.is_on
++                and brightness is None
++                and color_temp is None
++                and rgb is None
++                and rgbw is None
++                and hs_color is None
++                and xy_color is None
++            ):
++                await self._device.set_on()
+                 return
+ 
+-            if brightness is None:
+-                # normalize for brightness if brightness is derived from color
+-                brightness = self.brightness or 255
+-            rgb = cast(
+-                tuple[int, int, int],
+-                tuple(color * brightness // 255 for color in rgb),
+-            )
+-            white = white * brightness // 255 if white is not None else None
+-            await self._device.set_color(rgb, white)
+-
+-        # return after RGB(W) color has changed as it implicitly sets the brightness
+-        if rgbw is not None:
+-            await set_color(rgbw[:3], rgbw[3], brightness)
+-            return
+-        if rgb is not None:
+-            await set_color(rgb, None, brightness)
+-            return
+-
+-        if color_temp is not None:
+-            color_temp = min(
+-                self._attr_max_color_temp_kelvin,
+-                max(self._attr_min_color_temp_kelvin, color_temp),
+-            )
+-            if self._device.supports_color_temperature:
+-                await self._device.set_color_temperature(color_temp)
+-            elif self._device.supports_tunable_white:
+-                relative_ct = round(
+-                    255
+-                    * (color_temp - self._attr_min_color_temp_kelvin)
+-                    / (
+-                        self._attr_max_color_temp_kelvin
+-                        - self._attr_min_color_temp_kelvin
+-                    )
++            async def set_color(
++                rgb: tuple[int, int, int], white: int | None, brightness: int | None
++            ) -> None:
++                """Set color of light. Normalize colors for brightness when not writable."""
++                if self._device.brightness.writable:
++                    # let the KNX light controller handle brightness
++                    await self._device.set_color(rgb, white)
++                    if brightness:
++                        await self._device.set_brightness(brightness)
++                    return
++
++                if brightness is None:
++                    # normalize for brightness if brightness is derived from color
++                    brightness = self.brightness or 255
++                rgb = cast(
++                    tuple[int, int, int],
++                    tuple(color * brightness // 255 for color in rgb),
+                 )
+-                await self._device.set_tunable_white(relative_ct)
++                white = white * brightness // 255 if white is not None else None
++                await self._device.set_color(rgb, white)
+ 
+-        if xy_color is not None:
+-            await self._device.set_xyy_color(
+-                XYYColor(color=xy_color, brightness=brightness)
+-            )
+-            return
+-
+-        if hs_color is not None:
+-            # round so only one telegram will be sent if the other matches state
+-            hue = round(hs_color[0])
+-            sat = round(hs_color[1])
+-            await self._device.set_hs_color((hue, sat))
+-
+-        if brightness is not None:
+-            # brightness: 1..255; 0 brightness will call async_turn_off()
+-            if self._device.brightness.writable:
+-                await self._device.set_brightness(brightness)
++            # return after RGB(W) color has changed as it implicitly sets the brightness
++            if rgbw is not None:
++                await set_color(rgbw[:3], rgbw[3], brightness)
+                 return
+-            # brightness without color in kwargs; set via color
+-            if self._attr_color_mode == ColorMode.XY:
+-                await self._device.set_xyy_color(XYYColor(brightness=brightness))
+-                return
+-            # default to white if color not known for RGB(W)
+-            if self._attr_color_mode == ColorMode.RGBW:
+-                _rgbw = self.rgbw_color
+-                if not _rgbw or not any(_rgbw):
+-                    _rgbw = (0, 0, 0, 255)
+-                await set_color(_rgbw[:3], _rgbw[3], brightness)
++            if rgb is not None:
++                await set_color(rgb, None, brightness)
+                 return
+-            if self._attr_color_mode == ColorMode.RGB:
+-                _rgb = self.rgb_color
+-                if not _rgb or not any(_rgb):
+-                    _rgb = (255, 255, 255)
+-                await set_color(_rgb, None, brightness)
++
++            if color_temp is not None:
++                color_temp = min(
++                    self._attr_max_color_temp_kelvin,
++                    max(self._attr_min_color_temp_kelvin, color_temp),
++                )
++                if self._device.supports_color_temperature:
++                    await self._device.set_color_temperature(color_temp)
++                elif self._device.supports_tunable_white:
++                    relative_ct = round(
++                        255
++                        * (color_temp - self._attr_min_color_temp_kelvin)
++                        / (
++                            self._attr_max_color_temp_kelvin
++                            - self._attr_min_color_temp_kelvin
++                        )
++                    )
++                    await self._device.set_tunable_white(relative_ct)
++
++            if xy_color is not None:
++                await self._device.set_xyy_color(
++                    XYYColor(color=xy_color, brightness=brightness)
++                )
+                 return
+ 
++            if hs_color is not None:
++                # round so only one telegram will be sent if the other matches state
++                hue = round(hs_color[0])
++                sat = round(hs_color[1])
++                await self._device.set_hs_color((hue, sat))
++
++            if brightness is not None:
++                # brightness: 1..255; 0 brightness will call async_turn_off()
++                if self._device.brightness.writable:
++                    await self._device.set_brightness(brightness)
++                    return
++                # brightness without color in kwargs; set via color
++                if self._attr_color_mode == ColorMode.XY:
++                    await self._device.set_xyy_color(XYYColor(brightness=brightness))
++                    return
++                # default to white if color not known for RGB(W)
++                if self._attr_color_mode == ColorMode.RGBW:
++                    _rgbw = self.rgbw_color
++                    if not _rgbw or not any(_rgbw):
++                        _rgbw = (0, 0, 0, 255)
++                    await set_color(_rgbw[:3], _rgbw[3], brightness)
++                    return
++                if self._attr_color_mode == ColorMode.RGB:
++                    _rgb = self.rgb_color
++                    if not _rgb or not any(_rgb):
++                        _rgb = (255, 255, 255)
++                    await set_color(_rgb, None, brightness)
++                    return
++
+     @override
+     async def async_turn_off(self, **kwargs: Any) -> None:
+         """Turn the light off."""
+-        await self._device.set_off()
++        with telegram_context(self._context):
++            await self._device.set_off()
+ 
+ 
+ class KnxYamlLight(_KnxLight, KnxYamlEntity):
+diff --git a/homeassistant/components/knx/logbook.py b/homeassistant/components/knx/logbook.py
+index 82820451e0..a7dc3d0e42 100644
+--- a/homeassistant/components/knx/logbook.py
++++ b/homeassistant/components/knx/logbook.py
+@@ -5,7 +5,7 @@ from collections.abc import Callable
+ from homeassistant.components.logbook import LOGBOOK_ENTRY_MESSAGE, LOGBOOK_ENTRY_NAME
+ from homeassistant.core import Event, HomeAssistant, callback
+ 
+-from .const import DOMAIN, EVENT_KNX_TELEGRAM_RECEIVED
++from .const import DOMAIN, EVENT_KNX_STATE_CHANGED
+ 
+ 
+ @callback
+@@ -24,12 +24,12 @@ def async_describe_events(
+             if event.data["source_name"]
+             else source
+         )
++        destination = event.data.get("destination_name") or event.data["destination"]
+         return {
+             LOGBOOK_ENTRY_NAME: name,
+             LOGBOOK_ENTRY_MESSAGE: (
+-                f"sent a {event.data['telegramtype']} telegram"
+-                f" to {event.data['destination']}"
++                f"sent a {event.data['telegramtype']} telegram to {destination}"
+             ),
+         }
+ 
+-    async_describe_event(DOMAIN, EVENT_KNX_TELEGRAM_RECEIVED, async_describe_telegram)
++    async_describe_event(DOMAIN, EVENT_KNX_STATE_CHANGED, async_describe_telegram)
+diff --git a/homeassistant/components/knx/scene.py b/homeassistant/components/knx/scene.py
+index 2a9e61f314..6e6d36f945 100644
+--- a/homeassistant/components/knx/scene.py
++++ b/homeassistant/components/knx/scene.py
+@@ -2,7 +2,7 @@
+ 
+ from typing import Any, override
+ 
+-from xknx.devices import Device as XknxDevice, Scene as XknxScene
++from xknx.devices import Device as XknxDevice, DeviceUpdate, Scene as XknxScene
+ 
+ from homeassistant import config_entries
+ from homeassistant.components.scene import BaseScene
+@@ -72,10 +72,10 @@ class _KnxScene(BaseScene, _KnxEntityBase):
+         await self._device.run()
+ 
+     @override
+-    def after_update_callback(self, device: XknxDevice) -> None:
++    def after_update_callback(self, device: XknxDevice, update: DeviceUpdate) -> None:
+         """Call after device was updated."""
+         self._async_record_activation()
+-        super().after_update_callback(device)
++        super().after_update_callback(device, update)
+ 
+ 
+ class KnxYamlScene(_KnxScene, KnxYamlEntity):
+diff --git a/homeassistant/components/knx/sensor.py b/homeassistant/components/knx/sensor.py
+index 18b0762aa5..088d3c2700 100644
+--- a/homeassistant/components/knx/sensor.py
++++ b/homeassistant/components/knx/sensor.py
+@@ -7,7 +7,7 @@ from functools import partial
+ from typing import override
+ 
+ from xknx.core.connection_state import XknxConnectionState, XknxConnectionType
+-from xknx.devices import Device as XknxDevice, Sensor as XknxSensor
++from xknx.devices import Device as XknxDevice, DeviceUpdate, Sensor as XknxSensor
+ 
+ from homeassistant import config_entries
+ from homeassistant.components.sensor import (
+@@ -188,14 +188,14 @@ class _KnxSensor(RestoreSensor, _KnxEntityBase):
+         await super().async_added_to_hass()
+ 
+     @override
+-    def after_update_callback(self, device: XknxDevice) -> None:
++    def after_update_callback(self, device: XknxDevice, update: DeviceUpdate) -> None:
+         """Call after device was updated."""
+         self._attr_native_value = self._device.resolve_state()
+         if telegram := self._device.last_telegram:
+             self._attr_extra_state_attributes[ATTR_SOURCE] = str(
+                 telegram.source_address
+             )
+-        super().after_update_callback(device)
++        super().after_update_callback(device, update)
+ 
+ 
+ class KnxYamlSensor(_KnxSensor, KnxYamlEntity):
+diff --git a/homeassistant/components/knx/switch.py b/homeassistant/components/knx/switch.py
+index 090022ae20..252d9dac0b 100644
+--- a/homeassistant/components/knx/switch.py
++++ b/homeassistant/components/knx/switch.py
+@@ -3,6 +3,7 @@
+ from typing import Any, override
+ 
+ from xknx.devices import Switch as XknxSwitch
++from xknx.telegram import telegram_context
+ 
+ from homeassistant import config_entries
+ from homeassistant.components.switch import SwitchEntity
+@@ -90,12 +91,14 @@ class _KnxSwitch(SwitchEntity, RestoreEntity):
+     @override
+     async def async_turn_on(self, **kwargs: Any) -> None:
+         """Turn the device on."""
+-        await self._device.set_on()
++        with telegram_context(self._context):
++            await self._device.set_on()
+ 
+     @override
+     async def async_turn_off(self, **kwargs: Any) -> None:
+         """Turn the device off."""
+-        await self._device.set_off()
++        with telegram_context(self._context):
++            await self._device.set_off()
+ 
+ 
+ class KnxYamlSwitch(_KnxSwitch, KnxYamlEntity):
+diff --git a/homeassistant/components/knx/telegrams.py b/homeassistant/components/knx/telegrams.py
+index 4427585157..488b3ea53d 100644
+--- a/homeassistant/components/knx/telegrams.py
++++ b/homeassistant/components/knx/telegrams.py
+@@ -30,7 +30,7 @@ from .const import (
+     CONF_KNX_TELEGRAM_DB_BACKEND,
+     CONF_KNX_TELEGRAM_DB_POSTGRES_DSN,
+     CONF_KNX_TELEGRAM_DB_RETENTION_DAYS,
+-    EVENT_KNX_TELEGRAM_RECEIVED,
++    EVENT_KNX_STATE_CHANGED,
+     KNX_TELEGRAM_BACKEND_POSTGRES,
+     KNX_TELEGRAM_DB_PATH_SQLITE,
+     SIGNAL_KNX_DATA_SECURE_ISSUE_TELEGRAM,
+@@ -100,6 +100,36 @@ class TelegramDict(DecodedTelegramPayload):
+     timestamp: str  # ISO format
+ 
+ 
++class KnxTelegramContext(Context):
++    """Incoming telegram metadata retained until its state change is recorded."""
++
++    __slots__ = ("logged", "telegram_data")
++
++    def __init__(self, telegram_data: TelegramDict) -> None:
++        """Snapshot project names using the already decoded telegram."""
++        super().__init__()
++        self.telegram_data = telegram_data
++        self.logged = False
++
++    @callback
++    def async_log(self, hass: HomeAssistant) -> None:
++        """Record at most one attribution event for this telegram."""
++        if self.logged:
++            return
++        self.logged = True
++        hass.bus.async_fire(
++            EVENT_KNX_STATE_CHANGED,
++            {
++                "source": self.telegram_data["source"],
++                "source_name": self.telegram_data["source_name"],
++                "destination": self.telegram_data["destination"],
++                "destination_name": self.telegram_data["destination_name"],
++                "telegramtype": self.telegram_data["telegramtype"],
++            },
++            context=self,
++        )
++
++
+ class Telegrams:
+     """Class to handle KNX telegrams."""
+ 
+@@ -162,30 +192,6 @@ class Telegrams:
+             )
+         )
+         self.last_ga_telegrams: dict[str, TelegramDict] = {}
+-        self._last_entity_update: tuple[Telegram, Context] | None = None
+-
+-    @callback
+-    def async_get_context(self, telegram: Telegram) -> Context:
+-        """Describe a telegram and share its context across synchronous entity updates."""
+-        if self._last_entity_update is not None:
+-            last_telegram, context = self._last_entity_update
+-            if last_telegram is telegram:
+-                return context
+-
+-        context = Context()
+-        self._last_entity_update = (telegram, context)
+-        telegram_data = self.telegram_to_dict(telegram)
+-        self.hass.bus.async_fire(
+-            EVENT_KNX_TELEGRAM_RECEIVED,
+-            {
+-                "source": telegram_data["source"],
+-                "source_name": telegram_data["source_name"],
+-                "destination": telegram_data["destination"],
+-                "telegramtype": telegram_data["telegramtype"],
+-            },
+-            context=context,
+-        )
+-        return context
+ 
+     async def load_history(self) -> None:
+         """Load history from store."""
+@@ -352,6 +358,8 @@ class Telegrams:
+     def _xknx_telegram_cb(self, telegram: Telegram) -> None:
+         """Handle incoming and outgoing telegrams from xknx."""
+         telegram_dict = self.telegram_to_dict(telegram)
++        if telegram.direction is TelegramDirection.INCOMING:
++            telegram.context = KnxTelegramContext(telegram_dict)
+         if telegram_dict["payload"] is not None:
+             # exclude GroupValueRead telegrams
+             self.last_ga_telegrams[telegram_dict["destination"]] = telegram_dict
+diff --git a/tests/components/knx/test_climate.py b/tests/components/knx/test_climate.py
+index 2d01aae29b..e933a20359 100644
+--- a/tests/components/knx/test_climate.py
++++ b/tests/components/knx/test_climate.py
+@@ -368,8 +368,7 @@ async def test_climate_preset_mode(
+     knx.assert_state("climate.test", HVACMode.HEAT, preset_mode="economy")
+ 
+     assert len(knx.xknx.devices) == 2
+-    assert len(knx.xknx.devices[0].device_updated_cbs) == 2
+-    assert len(knx.xknx.devices[1].device_updated_cbs) == 2
++    assert [len(device.device_updated_cbs) for device in knx.xknx.devices] == [2, 2]
+     # test removing also removes hooks
+     entity_registry.async_remove("climate.test")
+     # If we remove the entity the underlying devices should disappear too
+diff --git a/tests/components/knx/test_context.py b/tests/components/knx/test_context.py
+new file mode 100644
+index 0000000000..861f325899
+--- /dev/null
++++ b/tests/components/knx/test_context.py
+@@ -0,0 +1,127 @@
++"""Test KNX context propagation through Home Assistant automations."""
++
++from datetime import timedelta
++
++from freezegun.api import FrozenDateTimeFactory
++from xknx.telegram import Telegram, TelegramDirection
++
++from homeassistant.components.knx.const import EVENT_KNX_STATE_CHANGED
++from homeassistant.core import HomeAssistant
++from homeassistant.setup import async_setup_component
++
++from .conftest import KNXTestKit
++
++from tests.common import async_capture_events, async_fire_time_changed
++
++
++async def test_knx_automation_cover_context(
++    hass: HomeAssistant,
++    knx: KNXTestKit,
++    freezer: FrozenDateTimeFactory,
++) -> None:
++    """Keep automation attribution through travel beyond HA's recent-context window."""
++    await knx.setup_integration(
++        {
++            "switch": {"name": "trigger", "address": "1/1/1"},
++            "cover": {
++                "name": "test",
++                "move_long_address": "2/0/1",
++                "stop_address": "2/0/2",
++                "position_state_address": "2/0/4",
++                "travelling_time_down": 12,
++                "travelling_time_up": 12,
++            },
++        },
++        state_updater=False,
++    )
++    await knx.receive_response("2/0/4", (0,))
++    await knx.receive_response("1/1/1", False)
++    assert await async_setup_component(
++        hass,
++        "automation",
++        {
++            "automation": [
++                {
++                    "alias": "KNX switch moves cover",
++                    "triggers": [
++                        {"trigger": "state", "entity_id": "switch.trigger", "to": "on"}
++                    ],
++                    "actions": [
++                        {
++                            "action": "cover.set_cover_position",
++                            "target": {"entity_id": "cover.test"},
++                            "data": {"position": 50},
++                        }
++                    ],
++                }
++            ]
++        },
++    )
++    await hass.async_block_till_done()
++    events = async_capture_events(hass, EVENT_KNX_STATE_CHANGED)
++    automations = async_capture_events(hass, "automation_triggered")
++    states = async_capture_events(hass, "state_changed")
++    outgoing: list[Telegram] = []
++
++    def collect(telegram: Telegram) -> None:
++        if telegram.direction is TelegramDirection.OUTGOING:
++            outgoing.append(telegram)
++
++    knx.xknx.telegram_queue.register_telegram_received_cb(
++        collect, match_for_outgoing=True
++    )
++    freezer.tick(timedelta(seconds=1))
++    await knx.receive_write("1/1/1", True, source="1.1.23")
++    await knx.assert_write("2/0/1", True)
++    assert len(automations) == 1
++    action_context = automations[0].context
++    assert action_context.parent_id == events[0].context.id
++    assert hass.states.get("cover.test").context is action_context
++    assert len(events) == 1
++
++    freezer.tick(timedelta(seconds=1))
++    async_fire_time_changed(hass)
++    await hass.async_block_till_done()
++    assert hass.states.get("cover.test").state == "closing"
++    assert hass.states.get("cover.test").context is action_context
++    freezer.tick(timedelta(seconds=6))
++    async_fire_time_changed(hass)
++    await hass.async_block_till_done()
++    await knx.assert_write("2/0/2", True)
++    assert len(outgoing) == 2
++    assert all(telegram.context is action_context for telegram in outgoing)
++    cover_states = [
++        event.data["new_state"]
++        for event in states
++        if event.data["entity_id"] == "cover.test"
++    ]
++    assert len(cover_states) >= 3
++    assert all(state.context.id == action_context.id for state in cover_states)
++    assert len(events) == 1
++
++
++async def test_direct_cover_sender(
++    hass: HomeAssistant, knx: KNXTestKit, freezer: FrozenDateTimeFactory
++) -> None:
++    """One incoming telegram retains its sender across delayed travel updates."""
++    await knx.setup_integration(
++        {
++            "cover": {
++                "name": "test",
++                "move_long_address": "2/0/1",
++                "position_state_address": "2/0/4",
++                "travelling_time_down": 12,
++            }
++        },
++        state_updater=False,
++    )
++    await knx.receive_response("2/0/4", (0,))
++    events = async_capture_events(hass, EVENT_KNX_STATE_CHANGED)
++    await knx.receive_write("2/0/1", True, source="1.1.24")
++    assert len(events) == 1
++    assert hass.states.get("cover.test").context is events[0].context
++    freezer.tick(timedelta(seconds=1))
++    async_fire_time_changed(hass)
++    await hass.async_block_till_done()
++    assert hass.states.get("cover.test").context is events[0].context
++    assert len(events) == 1
+diff --git a/tests/components/knx/test_logbook.py b/tests/components/knx/test_logbook.py
+index d3531f8e57..c7fcbe2216 100644
+--- a/tests/components/knx/test_logbook.py
++++ b/tests/components/knx/test_logbook.py
+@@ -1,4 +1,4 @@
+-"""Test KNX light activity attribution."""
++"""Test KNX activity attribution."""
+ 
+ import asyncio
+ from datetime import timedelta
+@@ -9,10 +9,7 @@ from xknx.telegram import Telegram, TelegramDirection
+ from xknx.telegram.address import GroupAddress, IndividualAddress
+ from xknx.telegram.apci import GroupValueResponse, GroupValueWrite
+ 
+-from homeassistant.components.knx.const import (
+-    EVENT_KNX_TELEGRAM_RECEIVED,
+-    KNX_MODULE_KEY,
+-)
++from homeassistant.components.knx.const import EVENT_KNX_STATE_CHANGED, KNX_MODULE_KEY
+ from homeassistant.const import STATE_ON, Platform
+ from homeassistant.core import Context, HomeAssistant
+ from homeassistant.setup import async_setup_component
+@@ -34,18 +31,21 @@ from tests.typing import WebSocketGenerator
+         pytest.param("1/1/2", GroupValueResponse, id="status-response"),
+     ],
+ )
+-async def test_light_telegram_context(
++@pytest.mark.parametrize("platform", ["light", "switch"])
++async def test_telegram_context(
+     hass: HomeAssistant,
+     knx: KNXTestKit,
++    platform: str,
+     address: str,
+     telegram_type: type[GroupValueWrite | GroupValueResponse],
+ ) -> None:
+     """Attribute a switch value to the actual sender, including status senders."""
+     await knx.setup_integration(
+-        {"light": {"name": "test", "address": "1/1/1", "state_address": "1/1/2"}},
++        {platform: {"name": "test", "address": "1/1/1", "state_address": "1/1/2"}},
+         state_updater=False,
+     )
+-    events = async_capture_events(hass, EVENT_KNX_TELEGRAM_RECEIVED)
++    await knx.receive_response("1/1/2", False)
++    events = async_capture_events(hass, EVENT_KNX_STATE_CHANGED)
+     knx.xknx.telegrams.put_nowait(
+         Telegram(
+             destination_address=GroupAddress(address),
+@@ -57,13 +57,14 @@ async def test_light_telegram_context(
+     await knx.xknx.telegrams.join()
+     await hass.async_block_till_done()
+ 
+-    state = hass.states.get("light.test")
++    state = hass.states.get(f"{platform}.test")
+     assert state.state == STATE_ON
+     assert len(events) == 1
+     assert events[0].data == {
+         "source": "1.1.23",
+         "source_name": "",
+         "destination": address,
++        "destination_name": "",
+         "telegramtype": telegram_type.__name__,
+     }
+     assert state.context is events[0].context
+@@ -72,50 +73,51 @@ async def test_light_telegram_context(
+     # A matching status telegram must not replace the command's attribution.
+     await knx.receive_write("1/1/2", True, source="1.1.40")
+     assert len(events) == 1
+-    assert hass.states.get("light.test").context is state.context
++    assert hass.states.get(f"{platform}.test").context is state.context
+ 
+     await knx.receive_write("1/1/1", False, source="1.1.24")
+     assert len(events) == 2
+-    assert hass.states.get("light.test").context is events[1].context
++    assert hass.states.get(f"{platform}.test").context is events[1].context
+     assert events[1].context.id != events[0].context.id
+     assert events[1].data["source"] == "1.1.24"
+ 
+ 
+-async def test_light_service_context(
+-    hass: HomeAssistant, knx: KNXTestKit, hass_admin_user: MockUser
++@pytest.mark.parametrize("platform", ["light", "switch"])
++async def test_service_context(
++    hass: HomeAssistant, knx: KNXTestKit, hass_admin_user: MockUser, platform: str
+ ) -> None:
+     """Preserve HA causes and replace them when a physical switch takes over."""
+-    await knx.setup_integration({"light": {"name": "test", "address": "1/1/1"}})
+-    events = async_capture_events(hass, EVENT_KNX_TELEGRAM_RECEIVED)
++    await knx.setup_integration({platform: {"name": "test", "address": "1/1/1"}})
++    events = async_capture_events(hass, EVENT_KNX_STATE_CHANGED)
+     service_context = Context(user_id=hass_admin_user.id, parent_id=Context().id)
+ 
+     await hass.services.async_call(
+-        "light",
++        platform,
+         "turn_on",
+-        {"entity_id": "light.test"},
++        {"entity_id": f"{platform}.test"},
+         blocking=True,
+         context=service_context,
+     )
+     await knx.assert_write("1/1/1", True)
+-    assert hass.states.get("light.test").context is service_context
++    assert hass.states.get(f"{platform}.test").context is service_context
+     assert not events
+ 
+     # This happens inside HA's recent-context window.
+     await knx.receive_write("1/1/1", False, source="1.1.23")
+-    assert hass.states.get("light.test").context is events[0].context
++    assert hass.states.get(f"{platform}.test").context is events[0].context
+     assert events[0].context.user_id is None
+     assert events[0].context.parent_id is None
+ 
+     next_context = Context(parent_id=Context().id)
+     await hass.services.async_call(
+-        "light",
++        platform,
+         "turn_on",
+-        {"entity_id": "light.test"},
++        {"entity_id": f"{platform}.test"},
+         blocking=True,
+         context=next_context,
+     )
+     await knx.assert_write("1/1/1", True)
+-    assert hass.states.get("light.test").context is next_context
++    assert hass.states.get(f"{platform}.test").context is next_context
+     assert len(events) == 1
+ 
+ 
+@@ -132,7 +134,7 @@ async def test_light_brightness_does_not_reuse_sender(
+             }
+         }
+     )
+-    events = async_capture_events(hass, EVENT_KNX_TELEGRAM_RECEIVED)
++    events = async_capture_events(hass, EVENT_KNX_STATE_CHANGED)
+     await knx.receive_write("1/1/1", True, source="1.1.23")
+     context = hass.states.get("light.test").context
+     assert context is events[0].context
+@@ -158,7 +160,7 @@ async def test_shared_telegram_context(hass: HomeAssistant, knx: KNXTestKit) ->
+             ]
+         }
+     )
+-    events = async_capture_events(hass, EVENT_KNX_TELEGRAM_RECEIVED)
++    events = async_capture_events(hass, EVENT_KNX_STATE_CHANGED)
+     await knx.receive_write("1/1/1", True, source="1.1.23")
+ 
+     assert len(events) == 1
+@@ -177,7 +179,7 @@ async def test_ui_light_telegram_context(
+         platform=Platform.LIGHT,
+         knx_data={"ga_switch": {"write": "1/1/1"}},
+     )
+-    events = async_capture_events(hass, EVENT_KNX_TELEGRAM_RECEIVED)
++    events = async_capture_events(hass, EVENT_KNX_STATE_CHANGED)
+     await knx.receive_write("1/1/1", True, source="1.1.23")
+ 
+     assert len(events) == 1
+@@ -217,7 +219,7 @@ async def test_light_live_activity(
+     assert len(entries) == 1
+     assert entries[0]["entity_id"] == "light.test"
+     assert entries[0]["context_name"] == "1.1.23"
+-    assert entries[0]["context_event_type"] == EVENT_KNX_TELEGRAM_RECEIVED
++    assert entries[0]["context_event_type"] == EVENT_KNX_STATE_CHANGED
+ 
+ 
+ @pytest.mark.usefixtures("recorder_mock", "load_knxproj")
+@@ -264,5 +266,5 @@ async def test_light_recorded_activity(
+     assert entries[0]["entity_id"] == "light.test"
+     assert entries[0]["context_name"] == expected_name
+     assert entries[0]["context_domain"] == "knx"
+-    assert entries[0]["context_event_type"] == EVENT_KNX_TELEGRAM_RECEIVED
++    assert entries[0]["context_event_type"] == EVENT_KNX_STATE_CHANGED
+     assert "context_user_id" not in entries[0]
+diff --git a/tests/components/knx/test_number.py b/tests/components/knx/test_number.py
+index eb631b8b1e..6a9cf9c076 100644
+--- a/tests/components/knx/test_number.py
++++ b/tests/components/knx/test_number.py
+@@ -231,7 +231,7 @@ async def test_number_yaml_attribute_validation(
+                 "device_class": "temperature",  # from DPT
+                 "unit_of_measurement": "°C",
+                 "min": -273.0,
+-                "max": 670760.0,
++                "max": 670433.28,
+                 "step": 0.01,
+             },
+         ),

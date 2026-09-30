@@ -9,3 +9,7 @@ Suggested captions:
 3. **Actuator feedback** (`03-actuator-feedback.jpg`): A state update from an actuator identifies that actuator, “Simulated Lighting actuator (1.1.10)”. This does not infer which wall switch originally caused the actuator's state.
 
 These are 1280 × 720 JPEG screenshots, without visual edits. Upload the images to the GitHub PR editor to obtain GitHub-hosted image URLs. No screenshots have been uploaded or published yet.
+
+## DeviceUpdate adaptation (September 30)
+
+The `knx-context-lab` directory contains the standalone Dockerfile, setup instructions, and validation reports for HA commit `f28862c6133d588c99b08f495d097403d8d1a32e` with XKNX draft `4180b8a38c4448ef0ac968dbb1bcbc051b2e2d38`. The new PNG screenshots show automation and direct KNX cover attribution, captured on September 29 from the local adaptation. All device data is simulated. These files are published on the review-assets branch, outside the core PR diff.

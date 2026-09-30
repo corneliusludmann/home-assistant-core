@@ -1,0 +1,2 @@
+PASS: automation and KNX sender attribution survive restart
+PASS: recorded sender names survived a container restart

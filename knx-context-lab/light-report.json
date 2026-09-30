@@ -1,0 +1,65 @@
+{
+  "start": "2026-09-30T08:46:42.406395+00:00",
+  "expected_names": [
+    "Simulated Living room wall switch (1.1.23)",
+    "1.1.24",
+    "Simulated Lighting actuator (1.1.10)"
+  ],
+  "checks": [
+    "Live Activity: named wall switch received over KNX/IP",
+    "Brightness update does not reuse the wall-switch context",
+    "Home Assistant service keeps the authenticated user context",
+    "Incoming telegram replaces the prior user attribution",
+    "Recorded Activity: named switch",
+    "Recorded Activity: unknown sender address",
+    "Recorded Activity: actuator response sender",
+    "Recorded Activity: user attribution"
+  ],
+  "entries": [
+    {
+      "state": "on",
+      "entity_id": "light.lab_light",
+      "when": 1790758002.419308,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "Simulated Living room wall switch (1.1.23)",
+      "context_message": "sent a GroupValueWrite telegram to 1/1/1"
+    },
+    {
+      "state": "off",
+      "entity_id": "light.lab_light",
+      "when": 1790758002.7811413,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "1.1.24",
+      "context_message": "sent a GroupValueWrite telegram to 1/1/1"
+    },
+    {
+      "state": "on",
+      "entity_id": "light.lab_light",
+      "when": 1790758002.7841284,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "Simulated Lighting actuator (1.1.10)",
+      "context_message": "sent a GroupValueResponse telegram to 1/1/2"
+    },
+    {
+      "state": "off",
+      "entity_id": "light.lab_light",
+      "when": 1790758002.8081536,
+      "context_user_id": "66bc34891e3440d89e0ea44e368aa5a3",
+      "context_domain": "light",
+      "context_service": "turn_off",
+      "context_event_type": "call_service"
+    },
+    {
+      "state": "on",
+      "entity_id": "light.lab_light",
+      "when": 1790758003.1117952,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "Simulated Living room wall switch (1.1.23)",
+      "context_message": "sent a GroupValueWrite telegram to 1/1/1"
+    }
+  ]
+}

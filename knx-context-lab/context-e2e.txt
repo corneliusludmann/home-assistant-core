@@ -1,0 +1,4 @@
+PASS: KNX/IP switch -> real HA automation -> cover, including travel beyond five seconds and auto-stop
+PASS: live Activity identifies the automation; only one KNX attribution event
+PASS: direct KNX cover command has sender attribution, preserved during travel
+PASS: recorded Activity; report at /config/context-report.json

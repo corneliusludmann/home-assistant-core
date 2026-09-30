@@ -1,0 +1,301 @@
+{
+  "start": "2026-09-30T08:46:30.105691+00:00",
+  "automation_context": {
+    "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+    "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+    "user_id": null
+  },
+  "cover_updates": [
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "closing",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 100,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:30.121670+00:00",
+      "last_reported": "2026-09-30T08:46:30.121670+00:00",
+      "last_updated": "2026-09-30T08:46:30.121670+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    },
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "closing",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 94,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:30.121670+00:00",
+      "last_reported": "2026-09-30T08:46:31.127177+00:00",
+      "last_updated": "2026-09-30T08:46:31.127177+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    },
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "closing",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 88,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:30.121670+00:00",
+      "last_reported": "2026-09-30T08:46:32.131808+00:00",
+      "last_updated": "2026-09-30T08:46:32.131808+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    },
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "closing",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 82,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:30.121670+00:00",
+      "last_reported": "2026-09-30T08:46:33.133893+00:00",
+      "last_updated": "2026-09-30T08:46:33.133893+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    },
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "closing",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 75,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:30.121670+00:00",
+      "last_reported": "2026-09-30T08:46:34.136372+00:00",
+      "last_updated": "2026-09-30T08:46:34.136372+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    },
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "closing",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 69,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:30.121670+00:00",
+      "last_reported": "2026-09-30T08:46:35.138693+00:00",
+      "last_updated": "2026-09-30T08:46:35.138693+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    },
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "closing",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 63,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:30.121670+00:00",
+      "last_reported": "2026-09-30T08:46:36.154689+00:00",
+      "last_updated": "2026-09-30T08:46:36.154689+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    },
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "closing",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 57,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:30.121670+00:00",
+      "last_reported": "2026-09-30T08:46:37.159503+00:00",
+      "last_updated": "2026-09-30T08:46:37.159503+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    },
+    {
+      "entity_id": "cover.lab_cover",
+      "state": "open",
+      "attributes": {
+        "is_closed": false,
+        "current_position": 50,
+        "friendly_name": "Lab cover",
+        "supported_features": 15
+      },
+      "last_changed": "2026-09-30T08:46:38.124455+00:00",
+      "last_reported": "2026-09-30T08:46:38.124455+00:00",
+      "last_updated": "2026-09-30T08:46:38.124455+00:00",
+      "context": {
+        "id": "01M3RQWVQ3N5GDMW6Y2BQ35T2V",
+        "parent_id": "01M3RQWVQ3ADDMFTVZAP1YN52C",
+        "user_id": null
+      }
+    }
+  ],
+  "live_entries": [
+    {
+      "state": "on",
+      "entity_id": "switch.lab_trigger",
+      "when": 1790757990.1156054,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "Simulated Living room wall switch (1.1.23)",
+      "context_message": "sent a GroupValueWrite telegram to 3/0/1"
+    },
+    {
+      "state": "closing",
+      "entity_id": "cover.lab_cover",
+      "when": 1790757990.1216702,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "KNX switch moves cover",
+      "context_message": "triggered by state of switch.lab_trigger",
+      "context_source": "state of switch.lab_trigger",
+      "context_entity_id": "automation.knx_switch_moves_cover"
+    },
+    {
+      "state": "open",
+      "entity_id": "cover.lab_cover",
+      "when": 1790757998.124455,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "KNX switch moves cover",
+      "context_message": "triggered by state of switch.lab_trigger",
+      "context_source": "state of switch.lab_trigger",
+      "context_entity_id": "automation.knx_switch_moves_cover"
+    },
+    {
+      "state": "closing",
+      "entity_id": "cover.lab_cover",
+      "when": 1790757998.4375234,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "1.1.24",
+      "context_message": "sent a GroupValueWrite telegram to 2/0/1"
+    },
+    {
+      "state": "open",
+      "entity_id": "cover.lab_cover",
+      "when": 1790757999.6468177,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "1.1.24",
+      "context_message": "sent a GroupValueWrite telegram to 2/0/2"
+    }
+  ],
+  "recorded_entries": [
+    {
+      "state": "on",
+      "entity_id": "switch.lab_trigger",
+      "when": 1790757990.1156054,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "Simulated Living room wall switch (1.1.23)",
+      "context_message": "sent a GroupValueWrite telegram to 3/0/1"
+    },
+    {
+      "state": "closing",
+      "entity_id": "cover.lab_cover",
+      "when": 1790757990.1216702,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "KNX switch moves cover",
+      "context_message": "triggered by state of switch.lab_trigger",
+      "context_source": "state of switch.lab_trigger",
+      "context_entity_id": "automation.knx_switch_moves_cover"
+    },
+    {
+      "state": "open",
+      "entity_id": "cover.lab_cover",
+      "when": 1790757998.124455,
+      "context_event_type": "automation_triggered",
+      "context_domain": "automation",
+      "context_name": "KNX switch moves cover",
+      "context_message": "triggered by state of switch.lab_trigger",
+      "context_source": "state of switch.lab_trigger",
+      "context_entity_id": "automation.knx_switch_moves_cover"
+    },
+    {
+      "state": "closing",
+      "entity_id": "cover.lab_cover",
+      "when": 1790757998.4375234,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "1.1.24",
+      "context_message": "sent a GroupValueWrite telegram to 2/0/1"
+    },
+    {
+      "state": "open",
+      "entity_id": "cover.lab_cover",
+      "when": 1790757999.6468177,
+      "context_event_type": "knx_state_changed",
+      "context_domain": "knx",
+      "context_name": "1.1.24",
+      "context_message": "sent a GroupValueWrite telegram to 2/0/2"
+    }
+  ],
+  "outgoing_packets": [
+    {
+      "group": "2/0/4",
+      "type": "GroupValueRead",
+      "value": "None"
+    },
+    {
+      "group": "1/1/2",
+      "type": "GroupValueRead",
+      "value": "None"
+    },
+    {
+      "group": "1/1/4",
+      "type": "GroupValueRead",
+      "value": "None"
+    },
+    {
+      "group": "2/0/1",
+      "type": "GroupValueWrite",
+      "value": "<DPTBinary value=\"1\" />"
+    },
+    {
+      "group": "2/0/2",
+      "type": "GroupValueWrite",
+      "value": "<DPTBinary value=\"1\" />"
+    }
+  ]
+}

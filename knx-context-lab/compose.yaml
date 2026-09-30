@@ -1,0 +1,12 @@
+services:
+  lab:
+    build: .
+    image: knx-context-lab:4180b8a
+    ports:
+      - "127.0.0.1:18124:8123"
+    volumes:
+      - context-data:/config
+    init: true
+    stop_grace_period: 45s
+volumes:
+  context-data:

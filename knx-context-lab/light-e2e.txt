@@ -1,0 +1,9 @@
+PASS: Live Activity: named wall switch received over KNX/IP
+PASS: Brightness update does not reuse the wall-switch context
+PASS: Home Assistant service keeps the authenticated user context
+PASS: Incoming telegram replaces the prior user attribution
+PASS: Recorded Activity: named switch
+PASS: Recorded Activity: unknown sender address
+PASS: Recorded Activity: actuator response sender
+PASS: Recorded Activity: user attribution
+Report: /config/smoke-report.json
